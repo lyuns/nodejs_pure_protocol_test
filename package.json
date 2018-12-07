@@ -1,0 +1,25 @@
+{
+  "name": "ntest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tcp_server": "node ./tcp/server",
+    "tcp_client": "node ./tcp/client",
+    "udp_server": "node ./udp/server",
+    "udp_client": "node ./udp/client",
+    "http_server": "node ./http/server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.6.1",
+    "heapdump": "^0.3.12",
+    "node-memwatch": "^1.0.1",
+    "ramda": "^0.26.1"
+  },
+  "devDependencies": {
+    "typescript": "^3.2.1"
+  }
+}
