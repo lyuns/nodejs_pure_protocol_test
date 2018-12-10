@@ -1,12 +1,15 @@
 exports.cookieUtil = {
     parser(cookie){
         let cookies = {};
-        let cookieList = cookie.split(';');
-        cookieList.forEach(pair_str => {
-            let pair = pair_str.split('=');
-            cookies[pair[0].trim()] = pair[1];
-        })
-        return cookies;
+        if(cookie){
+            let cookieList = cookie.split(';');
+            cookieList.forEach(pair_str => {
+                let pair = pair_str.split('=');
+                cookies[pair[0].trim()] = pair[1];
+            })
+            return cookies;
+        }
+        return null;
     },
     serialize(name, val, opt){
         let pairs = [name + '=' + val];

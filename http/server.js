@@ -5,6 +5,30 @@ const path = require('path');
 const EventEmitter = require('events').EventEmitter;
 const R = require('ramda');
 
+const cookieUtil = require('./util/cookieUtil').cookieUtil;
+const sessionUtil = require('./util/sessionUtil').sessionUtil;
+
+let checkSession = (req, res) => {
+    let id = req.cookies && req.cookies[sessionUtil.KEY];
+    if(!id){
+        req.session = sessionUtil.generate();
+    }else{
+        req.session = sessionUtil.getSession(id);
+        if(req.session){
+            if(req.session.cookie.expire > (new Date()).getTime()){
+                // 正常
+                req.session.cookie.expire = (new Date()).getTime() + sessionUtil.EXPIRES;
+            }else{
+                // 超时
+                delete sessionUtil[id];
+            }
+        }else{
+            // session不存在
+            req.session = sessionUtil.generate();
+        }
+    }
+};
+
 let requestHandler = (() => {
     let _instance = null;
     let _handler = {};
@@ -40,13 +64,23 @@ let requestHandler = (() => {
     };
 })();
 
-let controllerParser = (args) => {
+let controllerParser = (args, method) => {
     let {req, res} = args;
     let pathname = url.parse(req.url).pathname;
     let paths = pathname.split('/');
     let controller = paths[1] || 'index';
     let action = paths[2] || 'index';
-    let params = paths.slice(3);
+    let params = [method].concat(paths.slice(3));
+    req.cookies = cookieUtil.parser(req.headers.cookie);
+    checkSession(req, res);
+    let writeHead = res.writeHead;
+    res.writeHead = function(){
+        let cookies = res.getHeader('Set-Cookie');
+        let session = cookieUtil.serialize(sessionUtil.KEY, req.session.id);
+        cookies = Array.isArray(cookies) ? cookies.concat(session) : [cookies, session];
+        res.setHeader('Set-Cookie', cookies);
+        return writeHead.apply(this, arguments);
+    };
     let handler = requestHandler();
     if(handler[controller] && handler[controller][action]){
         handler[controller][action].apply(null, [req, res].concat(params));
@@ -63,10 +97,10 @@ let HttpServer = (() => {
         const port = 9633;
         const httpEventListener = new EventEmitter();
         httpEventListener.addListener('GET', (args) => {
-            controllerParser(args);
+            controllerParser(args, 'GET');
         });
         httpEventListener.addListener('POST', (args) => {
-            controllerParser(args);
+            controllerParser(args, 'POST');
         });
         let server = http.createServer((req, res) => {
             let pathname = url.parse(req.url).pathname;
