@@ -7,7 +7,7 @@ exports.sessionUtil = {
         let session = {};
         session.id = (new Date()).getTime() + Math.random();
         session.cookie = {
-            expire: (new Date()).getTime() + this.expire
+            expire: (new Date()).getTime() + this.EXPIRES
         };
         sessions[session.id] = session;
         return session;
