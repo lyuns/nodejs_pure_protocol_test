@@ -1,3 +1,5 @@
+const redisStore = require('../../util/redisUtil').store;
+
 let userinfo = {
     username: 'lyuns',
     userpass: 'abc123'
@@ -28,7 +30,7 @@ exports.api = (() => {
                                 info: '登录成功'
                             }));
                             req.session.isLogin = true;
-                            return;
+                            redisStore.set(req.session.id, req.session)
                         }
                     }else{
                         res.writeHead(200, {'Content-Type': 'application/json;charset=utf-8'});

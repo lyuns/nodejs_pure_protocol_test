@@ -7,25 +7,35 @@ const R = require('ramda');
 
 const cookieUtil = require('./util/cookieUtil').cookieUtil;
 const sessionUtil = require('./util/sessionUtil').sessionUtil;
+const redisStore = require('./util/redisUtil').store;
 
-let checkSession = (req, res) => {
+let checkSession = (req, res, cb) => {
     let id = req.cookies && req.cookies[sessionUtil.KEY];
     if(!id){
         req.session = sessionUtil.generate();
+        cb();
     }else{
-        req.session = sessionUtil.getSession(id);
-        if(req.session){
-            if(req.session.cookie.expire > (new Date()).getTime()){
-                // 正常
-                req.session.cookie.expire = (new Date()).getTime() + sessionUtil.EXPIRES;
-            }else{
-                // 超时
-                delete sessionUtil[id];
+        redisStore.get(id, (err, res) =>
+        {
+            if(err){
+                console.log('获取session出错', err);
             }
-        }else{
-            // session不存在
-            req.session = sessionUtil.generate();
-        }
+            if(res){
+                let session = JSON.parse(res);
+                if(session.cookie.expire > (new Date()).getTime()){
+                    // 正常
+                    session.cookie.expire = (new Date()).getTime() + sessionUtil.EXPIRES;
+                    req.session = session;
+                }else{
+                    // 超时
+                    // sessionUtil.deleteSession(id);
+                    req.session = sessionUtil.generate();
+                }
+            }else{
+                req.session = sessionUtil.generate();
+            }
+            cb();
+        });
     }
 };
 
@@ -72,22 +82,28 @@ let controllerParser = (args, method) => {
     let action = paths[2] || 'index';
     let params = [method].concat(paths.slice(3));
     req.cookies = cookieUtil.parser(req.headers.cookie);
-    checkSession(req, res);
-    let writeHead = res.writeHead;
-    res.writeHead = function(){
-        let cookies = res.getHeader('Set-Cookie');
-        let session = cookieUtil.serialize(sessionUtil.KEY, req.session.id);
-        cookies = Array.isArray(cookies) ? cookies.concat(session) : [cookies, session];
-        res.setHeader('Set-Cookie', cookies);
-        return writeHead.apply(this, arguments);
-    };
-    let handler = requestHandler();
-    if(handler[controller] && handler[controller][action]){
-        handler[controller][action].apply(null, [req, res].concat(params));
-    }else{
-        res.writeHead(500, {'Content-Type': 'text/plain;charset=utf-8'});
-        res.end('找不到响应服务器');
-    }
+    checkSession(req, res, () => {
+        let writeHead = res.writeHead;
+        res.writeHead = function(){
+            let cookies = res.getHeader('Set-Cookie');
+            let session = cookieUtil.serialize(sessionUtil.KEY, req.session.id, {path: '/'});
+            if(cookies !== undefined){
+                cookies = Array.isArray(cookies) ? cookies.concat(session) : [cookies, session];
+            }else{
+                cookies = [session];
+            }
+            res.setHeader('Set-Cookie', cookies);
+            redisStore.set(req.session.id, req.session);
+            return writeHead.apply(this, arguments);
+        };
+        let handler = requestHandler();
+        if(handler[controller] && handler[controller][action]){
+            handler[controller][action].apply(null, [req, res].concat(params));
+        }else{
+            res.writeHead(500, {'Content-Type': 'text/plain;charset=utf-8'});
+            res.end('找不到响应服务器');
+        }
+    });
 };
 
 let HttpServer = (() => {

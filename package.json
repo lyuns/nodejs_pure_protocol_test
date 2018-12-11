@@ -8,18 +8,16 @@
     "tcp_client": "node ./tcp/client",
     "udp_server": "node ./udp/server",
     "udp_client": "node ./udp/client",
-    "http_server": "node ./http/server"
+    "http_server": "node ./http/server",
+    "test_main": "node ./test/main"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "async": "^2.6.1",
-    "heapdump": "^0.3.12",
-    "node-memwatch": "^1.0.1",
-    "ramda": "^0.26.1"
+    "ramda": "^0.26.1",
+    "redis": "^2.8.0"
   },
-  "devDependencies": {
-    "typescript": "^3.2.1"
-  }
+  "devDependencies": {}
 }
